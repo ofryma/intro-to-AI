@@ -137,7 +137,54 @@ Data mining does not know in advance what to look for and has no structured lang
 * Which products are usually sold together? (clustering / associative rules)
 * Which features in product X led to a profit? (feature analysis)
 
+<hr>
+
+> ## Decision Trees and Categorical Learning
+
+
 ![Three Possibilities](images\Three_Possibilities.png)
+
+
+**Decision Trees Algorithm Overview** - 
+1. check for base cases and return the classification (a leaf)
+2. from all attributes find the attricute with the best splitting criterion (a_best)
+3. create a decision node that splits on a_best
+4. recurse on the sublist by splitting on a_best, and add those nodes aschildren of nodes
+
+### **Entropy** - 
+* Low Entropy is better
+* Entropy of 1 happens when the groups are fully mixed
+
+[**Information Gain**](./Golf.xlsx) - how much we learned from an attribute. The attribute that with the most IG is the one you shuold split by it
+
+**Gain Ratio** - a modification of the information gain tha reduce its bias on high-branch attributes. it should be large when data is evenly spread
+
+**CART - GINI Index** - 
+
+[**RandomForest**](https://en.wikipedia.org/wiki/Random_forest) - trains on diffrent parts of the data to avoid overfitting in deep trees
+
+### Bootstraping - Create Similar Data
+bootstrapping is a statistical procedure that resamples a signle dataset to create many simulated samples. (changing the data to a not real but similar data)
+
+
+> ## Evaluating Categorical Learning
+
+* Recall
+* Precision
+* Accuracy
+
+**10-fold cross-validation** -
+1. divide the data into 10 (k) parts.
+2. Treat the 1st tenth of the data as the test dataset. crete a model according to the train dataset
+3. Apply the model to the test data 
+4. Repeat this procedure for all 10 tenths of the data
+5. Calculate statistics of model accuracy and fit 
+
+
+
+
+
+
 
 
 
