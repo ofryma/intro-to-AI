@@ -1,5 +1,6 @@
 
-# EX 1
+> # EX 1 - Basic in SQL
+
 
 * [Download SQLServer](https://www.microsoft.com/he-il/sql-server/sql-server-downloads) Express edition. Use Basic installation.
 
