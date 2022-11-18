@@ -11,7 +11,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 
-def hw1(dataset , cv=10 , md = 80):
+def analyze_ds(dataset , cv=10 , md = 80):
 
     # creating new tree cls
     cls = DecisionTreeClassifier()
@@ -59,7 +59,7 @@ def main(dataset):
 
     for i in range(1,11):
         
-        v_list = hw1(dataset , md = i)
+        v_list = analyze_ds(dataset , md = i)
 
         table["Accuracy"].append(v_list[0])
         table["Precision"].append(v_list[1])
@@ -85,11 +85,11 @@ def main(dataset):
 
     return best_md
 
-
 dataset_list = [datasets.load_iris() , datasets.load_wine() , datasets.load_digits()]
 
-
 for ds in dataset_list:
+
+    dataset_name = ds["DESCR"].split("\n")[0]
     bmd = main(ds)
     print("Best Max Depth: " , bmd)
 
