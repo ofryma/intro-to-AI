@@ -109,6 +109,9 @@ def main(dataset):
 dataset_list = [datasets.load_iris() , datasets.load_wine() , datasets.load_digits() , datasets.load_diabetes()]
 
 
+
+
+
 for ds in dataset_list:
 
     dataset_name = ds["DESCR"].split("\n")[0]
