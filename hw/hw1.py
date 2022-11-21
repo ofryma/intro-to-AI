@@ -21,22 +21,43 @@ def analyze_ds(dataset , cv=10 , md = 80):
     cls.fit(dataset.data , dataset.target)
 
     # clac accuracy
-    ac =  cross_val_score(
-        cls,
-        dataset.data,
-        dataset.target,
-        scoring='accuracy',
-        cv=cv
-    )
-
+    ## seem like when the cross validation split is greater the 
+    ## number of members in each class, this claculation is
+    ## crushing the program, so if this is the case, the number 
+    ## of cv reduced to 2
+    try:
+        ac =  cross_val_score(
+            cls,
+            dataset.data,
+            dataset.target,
+            scoring='accuracy',
+            cv=cv
+        )
+    except:
+        ac =  cross_val_score(
+            cls,
+            dataset.data,
+            dataset.target,
+            scoring='accuracy',
+            cv=2
+        )
     # clac precision
-    pre =  cross_val_score(
+    try:
+        pre =  cross_val_score(
+            cls,
+            dataset.data,
+            dataset.target,
+            scoring='precision_weighted',
+            cv=cv
+        )
+    except:
+        pre =  cross_val_score(
         cls,
         dataset.data,
         dataset.target,
         scoring='precision_weighted',
-        cv=cv
-    )
+        cv=2
+        )
 
     y_prd = cls.predict(dataset.data)
 
@@ -85,7 +106,8 @@ def main(dataset):
 
     return best_md
 
-dataset_list = [datasets.load_iris() , datasets.load_wine() , datasets.load_digits()]
+dataset_list = [datasets.load_iris() , datasets.load_wine() , datasets.load_digits() , datasets.load_diabetes()]
+
 
 for ds in dataset_list:
 
