@@ -160,7 +160,7 @@ Data mining does not know in advance what to look for and has no structured lang
 
 **Gain Ratio** - a modification of the information gain tha reduce its bias on high-branch attributes. it should be large when data is evenly spread
 
-**CART - GINI Index** - 
+**CART - GINI Index**
 
 [**RandomForest**](https://en.wikipedia.org/wiki/Random_forest) - trains on diffrent parts of the data to avoid overfitting in deep trees
 
@@ -182,8 +182,16 @@ bootstrapping is a statistical procedure that resamples a signle dataset to crea
 5. Calculate statistics of model accuracy and fit 
 
 
-
 [link to ex.3](../../ex/ex2/ex2.md) about basic python skils
+
+### [SVM](https://en.wikipedia.org/wiki/Support_vector_machine)
+
+### [KNN](https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm)
+
+
+
+
+
 
 
 
