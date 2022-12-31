@@ -7,7 +7,6 @@ from sklearn.decomposition import PCA
 import warnings
 warnings.filterwarnings("ignore")
 
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,6 +28,16 @@ from keras import activations
 
 def split_data_target( dataframe , target_column : str ):
 
+    """
+    This funciton split a pandas dataframe according to a
+    specific column
+    
+    return:
+    X: the data part without the column
+    y: the target part, only the specific column
+    """
+
+
     X = dataframe.drop(columns=[target_column])
     y = dataframe[target_column]
     
@@ -39,6 +48,14 @@ def convert_from_str_to_int(string_list : list , conversion_dict : dict):
     """
         This function takes a convertion dictionary : { "Famale" : 1 , "Male" : 0}
         and for every element in the string_list, converts it according to this dictionaty
+
+        string_list: a list of string that containt string matching to
+        the keys in the conversion_dict
+        conversion_dict: dictionary with keys matching to the strings
+        in the string_list and integers values to replace the string in the string_list
+
+        returns a new list with the numbers from the conversion_dict values
+        in the places where the conversion_dict keys where in the string_list   
     """
 
     new_list = []
@@ -74,6 +91,27 @@ def genarate_model(
     model_summary : bool = False, 
     first_hidden_layer : int = 50,
     ):
+    """
+    This funciton returns a model based on the configuration
+    of the arguments sent to it.
+
+    n_list: a list of integers that define the number of node
+    in each layers
+    activation_list: a list of string that define the activation
+    function in each of the layers.
+    the length of the shortest list out of those to lists will determine
+    the number of layers in this model
+
+    model_summary: if True, will print the model summary
+    model_visualization: if True will show the visualization of the model
+
+    input_dim: the lenght of the input vector for the input layer (number of columns
+    in the dataset)
+    input_activation_function: a string for setting the activation function for
+    the input layer (default to "relu")
+    output_activation_function: a string for setting the activation function for
+    the output layer (default to "sigmoid")
+    """
 
     # Define the model architecture
     model = Sequential()
@@ -98,7 +136,11 @@ def genarate_model(
     return model
 
 def find_best_model_fit(model , num_of_iters : int = 1):
-    
+    """
+    This funciton run the fit method on a given model
+    a number of times to find the one fit with the 
+    best accuracy
+    """
     best_model = None
     best_acc = 0
 
