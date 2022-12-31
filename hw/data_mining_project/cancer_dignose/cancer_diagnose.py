@@ -127,11 +127,11 @@ def find_best_model_fit(model , num_of_iters : int = 1):
     return best_model
 
 
-train_data = pd.read_csv("train.csv")
-test_data = pd.read_csv("testing.csv")
-validation_data = pd.read_csv("validation.csv")
+train_data = pd.read_csv("https://raw.githubusercontent.com/ofryma/intro-to-AI/main/hw/data_mining_project/cancer_dignose/train.csv")
+test_data = pd.read_csv("https://raw.githubusercontent.com/ofryma/intro-to-AI/main/hw/data_mining_project/cancer_dignose/testing.csv")
+validation_data = pd.read_csv("https://raw.githubusercontent.com/ofryma/intro-to-AI/main/hw/data_mining_project/cancer_dignose/validation.csv")
 
-# aplit the data to X and y
+# split the data to X and y
 X_train , y_train = split_data_target(train_data , "Diagnosis")
 X_test , y_test = split_data_target(test_data , "Diagnosis")
 X_validation , y_validation = split_data_target(validation_data , "Diagnosis")
@@ -146,11 +146,14 @@ X_validation = X_validation.drop(columns=["PtNo"])
 y_validation = convert_from_str_to_int(y_validation , {"NonCancer" : 0 , "Cancer" : 1})
 
 
+## features selection impl.
+
+
+
 # converting the dataframes into list of all the rows in the dataframe
 
 
 normalizer = StandardScaler()
-
 
 X_train_norm = normalizer.fit_transform(X_train)
 X_test_norm = normalizer.transform(X_test)
@@ -159,8 +162,6 @@ X_validation_norm = normalizer.transform(X_validation)
 y_train = np.asarray(y_train)
 y_test = np.asarray(y_test)
 y_validation = np.asarray(y_validation)
-
-
 
 
 # variables
