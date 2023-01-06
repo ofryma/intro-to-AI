@@ -11,7 +11,7 @@ from keras.optimizers import RMSprop , SGD
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 import random
-# from keras.applications import vgg16
+from keras.applications import VGG16
 from keras.models import load_model
 
 
@@ -34,16 +34,6 @@ def predict_image_with_vgg16(model, img_path, preprocess_input_fn, decode_predic
     predictions_df.columns = ["Predicted Class", "Name", "Probability"]
     return predictions_df
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 class ModelUse():
         def __init__(
@@ -57,20 +47,31 @@ class ModelUse():
                 target_size = (150,150),
                 output_activation : str = 'softmax',
                 show_logs : bool = True, # manage the logs along the way
-                use_dropout : bool = False, 
+
+                # neural network settings
+                k_size : int = 3,
+                conv2_act_func : list = ["relu" , "relu" , "relu"],
+                conv2_node_number : list = [16 , 32 , 64],
+
+
+                use_dropout : bool = False, # decide if you want to add dropout layer
+                dropout_rate : float = 0.5, # if there is a dropout layer, decide the dropout rate
+
                 optimizer = None, # the funciton that get send to the compile of the model
                 learning_rate : float = 0.001,
+                loss_function : any = 'binary_crossentropy',
                 train_batch_size : int = 20,
                 test_batch_size : int = 20,
+
                 existing_model_path = None, # is there is a model in a .h5 file, we can load it instead of creating NN again
                 epoch_number : int = 10, 
                 verbose : int = 2, # logs of the apoch proccess
+
                 model_name : str = "my_model", # the name of the new modle that saved ( my_model.h5 )
                 
                 
         ):
                 
-                self.verbose = verbose
                 try:
                         self.existing_model_path = os.path.join(os.getcwd() , existing_model_path)
                 except:
@@ -84,12 +85,20 @@ class ModelUse():
                 self.image_input_shape = image_input_shape
                 self.output_activation = output_activation
                 self.show_log = show_logs
+
+                self.k_size = k_size
+                self.conv2_act_function = conv2_act_func
+                self.conv2_node_number = conv2_node_number
+
                 self.use_dropout = use_dropout
+                self.dropout_rate = dropout_rate
+
                 self.learning_rate = learning_rate
                 if optimizer == None:
                         self.use_optimizer = RMSprop(learning_rate=learning_rate)
                 else:
                         self.use_optimizer = optimizer
+                self.loss_function = loss_function
                 self.epoch_number = epoch_number
                 self.data_src_dir = data_src_dir
                 self.filtered_dir = filtered_dir
@@ -102,6 +111,12 @@ class ModelUse():
 
                 self.model_name = model_name
                 self.model = self.cnn_model()
+
+                try:
+                        self.vgg_tl_model = self.vgg16_transfer_learning_model()
+                except Exception as e:
+                        print("Something went wrong with building the vgg model" , e)
+
 
         def create_image_gens(self , rescale_factor = 1./255):
 
@@ -142,29 +157,28 @@ class ModelUse():
                 # the three color channels: R, G, and B
                 img_input = layers.Input(shape=self.image_input_shape)
 
-                # First convolution extracts 16 filters that are 3x3
-                # Convolution is followed by max-pooling layer with a 2x2 window
-                x = layers.Conv2D(16, 3, activation='relu')(img_input)
-                x = layers.MaxPooling2D(2)(x)
-
-                # Second convolution extracts 32 filters that are 3x3
-                # Convolution is followed by max-pooling layer with a 2x2 window
-                x = layers.Conv2D(32, 3, activation='relu')(x)
-                x = layers.MaxPooling2D(2)(x)
-
-                # Third convolution extracts 64 filters that are 3x3
-                # Convolution is followed by max-pooling layer with a 2x2 window
-                x = layers.Conv2D(64, 3, activation='relu')(x)
-                x = layers.MaxPooling2D(2)(x)
-
-                # if with_dropout:
-                #         x = layers.Dropout()(x)
+                first = True
+                # This loop use two lists of values to create the layers in this model
+                # in a dynamic way, by adding Conv2D layer and MaxPool layer according to 
+                # current activation function and number of nodes given in the lists
+                for act_func , node_number in zip(self.conv2_act_function , self.conv2_node_number):
+                        if first:        
+                                x = layers.Conv2D(node_number, self.k_size, activation=act_func)(img_input)
+                                first = False
+                        else:
+                                x = layers.Conv2D(node_number, self.k_size, activation=act_func)(x)                
+                        x = layers.MaxPooling2D(2)(x)
+                        
 
                 # Flatten feature map to a 1-dim tensor so we can add fully connected layers
                 x = layers.Flatten()(x)
 
                 # Create a fully connected layer with ReLU activation and 512 hidden units
                 x = layers.Dense(512, activation='relu')(x)
+
+                if self.use_dropout:
+                        x = layers.Dropout(self.dropout_rate)(x)
+                
 
                 # Create output layer with a single node and sigmoid activation
                 output = layers.Dense(len(self.prediction_keys) , activation=self.output_activation)(x)
@@ -178,7 +192,7 @@ class ModelUse():
                 if self.show_log:
                         model.summary()
 
-                model.compile(loss='binary_crossentropy',optimizer=RMSprop(learning_rate=0.001),metrics=['acc'])
+                model.compile(loss=self.loss_function ,optimizer=self.use_optimizer , metrics=['acc'])
 
                 self.model = model
                 return model
@@ -266,13 +280,15 @@ class ModelUse():
                 return pred_dict
 
         def cnn_model(self): 
-                if not self.existing_model_path == None and os.path.exists(self.existing_model_path):
-                        print("Loading model from  " , self.existing_model_path)
-                        self.model = load_model(self.existing_model_path)
+
+                model_filename = os.path.join(os.getcwd() , ".".join([self.model_name , "h5"])) 
+                if os.path.exists(model_filename):
+                        print("Loading model from  " , model_filename)
+                        self.model = load_model(model_filename)
                         return self.model
                         
                         
-                print("Creating new model...")
+                print(f"Creating new model at {model_filename}...")
                               
                 if self.rearange_data:
                         self.arrange_by_tags()
@@ -291,11 +307,13 @@ class ModelUse():
                         verbose=self.verbose
                 )
 
-                new_model_path = os.path.join(os.getcwd() , f'{self.model_name}.h5')
+                
+
+                
                 try:
-                        print("Saving new model to " , new_model_path )
-                        our_model.save(new_model_path)
-                        self.existing_model_path = new_model_path
+                        print("Saving new model to " , model_filename )
+                        our_model.save(model_filename)
+                        self.existing_model_path = model_filename
                                 
                 except Exception as e:
                         print(e)
@@ -331,27 +349,69 @@ class ModelUse():
                 plt.plot(epochs, val_loss)
                 plt.title('Training and validation loss')
 
+        def vgg16_transfer_learning_model(self):
+                
+                
+                # check if there is a saved model
+                
+                vgg_model_name = ".".join([self.model_name , "vgg16" , "h5"])
+
+                if os.path.exists(os.path.join(os.getcwd() , vgg_model_name)):
+                        self.vgg_tl_model = load_model(os.path.join(os.getcwd() , vgg_model_name))
+                        return self.vgg_tl_model
+
+
+                # Load the VGG16 model weights
+                vgg16 = VGG16(include_top=False, weights='imagenet')
+
+                # Create a new model with the layers from VGG16 up to the last convolutional layer
+                vgg16_model = Model(inputs=vgg16.input, outputs=vgg16.get_layer('block5_conv3').output)
+
+                # Freeze the weights of the layers in the VGG16 model
+                for layer in vgg16_model.layers:
+                        layer.trainable = False
+
+                # Add new layers to the model
+                x = vgg16_model.output
+                x = layers.Flatten()(x)
+                x = layers.Dense(1024, activation='relu')(x)
+                predictions = layers.Dense(10, activation='softmax')(x)
+
+                # Create a new model with the layers from VGG16 and the new layers
+                new_tl_model = Model(inputs=vgg16_model.input, outputs=predictions)
+
+                # Compile the model with a loss function and an optimizer
+                new_tl_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+
+                train_generator , test_generator = self.create_image_gens()
+                # Train the model on your dataset
+                new_tl_model.fit(train_generator , epochs=self.epoch_number, batch_size=self.train_batch_size)
+
+                return new_tl_model
+
 weater_model = ModelUse(
         data_src_dir=os.path.join(os.getcwd() , "hw\data_mining_project\image_iden\weather"),
         filtered_dir=os.path.join(os.getcwd() , "hw\data_mining_project\image_iden\weather_filtered"),
         prediction_keys = ["rain" , "cloudy" , "shine" , "sunrise"],
-        existing_model_path="my_model.h5"
+        # existing_model_path="my_model.h5",
+        model_name="weather_model",
+        train_split_size=150,
         )
-
-
-
-# vgg16_model = vgg16.VGG16(weights='imagenet')
 
 
 ## Predictions
 
-for i in range(3):
+dall_e_images_folder = os.path.join(os.getcwd() , "hw\data_mining_project\image_iden\dall-e_images")
+
+for img in os.listdir(dall_e_images_folder):
         print("*"*80)
-        img_file_index = random.randint(0 , len(os.listdir(weater_model.data_src_dir)))
-        rand_name = os.listdir(weater_model.data_src_dir)[img_file_index]
-        img_path = os.path.join(weater_model.data_src_dir , rand_name)
-        print(rand_name)
+        img_path = os.path.join(dall_e_images_folder , img)
+        print(img)
         results = weater_model.predict_image_with_cnn(img_path=img_path)
         print(results)
         # print(predict_image_with_vgg16(vgg16_model, img_path, vgg16.preprocess_input, vgg16.decode_predictions))
         print("*"*80)
+
+
+
