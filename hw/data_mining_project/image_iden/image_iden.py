@@ -63,7 +63,7 @@ class ModelUse():
                 loss_function : any = 'binary_crossentropy',
                 train_batch_size : int = 20,
                 test_batch_size : int = 20,
-
+                image_class_mode : str = 'categorical',
                 existing_model_path = None, # is there is a model in a .h5 file, we can load it instead of creating NN again
                 epoch_number : int = 10, 
                 verbose : int = 2, # logs of the apoch proccess
@@ -107,7 +107,7 @@ class ModelUse():
                 self.image_target_size = target_size # i.e. 150X150 (150,150)
                 self.train_batch_size = train_batch_size
                 self.test_batch_size = test_batch_size
-                self.image_class_mode = 'categorical'
+                self.image_class_mode = image_class_mode
                 self.verbose = verbose
 
                 self.model_name = model_name
@@ -116,7 +116,7 @@ class ModelUse():
                 try:
                         self.vgg_tl_model = self.vgg16_transfer_learning_model()
                 except Exception as e:
-                        print("Something went wrong with building the vgg model" , e)
+                        print("Something went wrong with building the vgg model" ) # , e
 
 
         def create_image_gens(self , rescale_factor = 1./255 , datagen_mean : any = False):
@@ -186,8 +186,12 @@ class ModelUse():
                 if self.use_dropout:
                         x = layers.Dropout(self.dropout_rate)(x)
                 
-
-                # Create output layer with a single node and sigmoid activation
+                
+                if self.output_activation == "sigmoid":
+                        output_lenght = 1
+                elif self.output_activation == "softmax":
+                        output_lenght = len(self.prediction_keys)
+                
                 output = layers.Dense(len(self.prediction_keys) , activation=self.output_activation)(x)
 
                 # Create model:
@@ -312,7 +316,8 @@ class ModelUse():
                 train_generator , test_generator = self.create_image_gens()
 
                 # training the model
-                self.history = our_model.fit(
+                # self.history = 
+                our_model.fit(
                         train_generator,
                         epochs=self.epoch_number,
                         validation_data=test_generator,
@@ -381,7 +386,7 @@ class ModelUse():
 
                 train_generator , test_generator = self.create_image_gens(datagen_mean=[123.68, 116.779, 103.939])
 
-                model.fit_generator(train_generator, steps_per_epoch=len(train_generator), epochs=self.epoch_number, verbose=self.verbose)
+                model.fit(train_generator, steps_per_epoch=len(train_generator), epochs=self.epoch_number, verbose=self.verbose)
 
                 self.vgg_tl_model = model
 

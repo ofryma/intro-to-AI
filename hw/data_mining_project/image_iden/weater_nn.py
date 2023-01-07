@@ -14,8 +14,7 @@ weater_model = ModelUse(
         show_logs = True,
         output_activation="softmax",
         optimizer=SGD(learning_rate=0.001, momentum=0.9),
-        epoch_number=10,
-        verbose=0
+        epoch_number=1,
 
         )
 
