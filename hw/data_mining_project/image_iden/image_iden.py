@@ -33,14 +33,15 @@ def predict_image_with_vgg16(model, img_path, preprocess_input_fn, decode_predic
     predictions_df = pd.DataFrame(decode_predictions_fn(preds, top=10)[0])
     predictions_df.columns = ["Predicted Class", "Name", "Probability"]
     return predictions_df
-
+	
 
 class ModelUse():
         def __init__(
                 self,
                 prediction_keys : list, # list of the tags this model know
-                data_src_dir : str, # source directory of the image data files
-                filtered_dir : str, # destination directory of the image files
+                filtered_dir : str,
+                data_src_dir : str = None, # source directory of the image data files
+                 # destination directory of the image files
                 train_split_size : int = None, # how many image going to the train data
                 rearange_data : bool = True, # use only for the first time to transfer from the source to the destination dirs
                 image_input_shape = (150,150,3),
@@ -118,7 +119,7 @@ class ModelUse():
                         print("Something went wrong with building the vgg model" , e)
 
 
-        def create_image_gens(self , rescale_factor = 1./255):
+        def create_image_gens(self , rescale_factor = 1./255 , datagen_mean : any = False):
 
                 train_dir = os.path.join(self.filtered_dir , "train")
                 test_dir = os.path.join(self.filtered_dir , "test")
@@ -130,6 +131,12 @@ class ModelUse():
                 # All images will be rescaled by 1./255
                 train_datagen = ImageDataGenerator(rescale=rescale_factor)
                 test_datagen = ImageDataGenerator(rescale=rescale_factor)
+
+
+                if datagen_mean:
+                        train_datagen.mean = datagen_mean
+                        test_datagen.mean = datagen_mean
+
 
                 # Flow training images in batches of 20 using train_datagen generator
                 train_gen = train_datagen.flow_from_directory(
@@ -260,9 +267,9 @@ class ModelUse():
                 if model==None:
                         model = self.model
                 
-                img = load_img(img_path, target_size=self.image_target_size)  # this is a PIL image
-                x = img_to_array(img)  # Numpy array with shape (150, 150, 3)
-                x = x.reshape((1,) + x.shape)  # Numpy array with shape (1, 150, 150, 3)
+                img = load_img(img_path, target_size=self.image_target_size)  
+                x = img_to_array(img)  
+                x = x.reshape((1,) + x.shape)
 
                 # Rescale by 1/255
                 x /= 255
@@ -270,6 +277,7 @@ class ModelUse():
                 # Let's run our image through our network, thus obtaining all
                 # intermediate representations for this image.
                 successive_feature_maps = model.predict(x)
+                print(successive_feature_maps)
 
                 pred_dict = {}
 
@@ -278,6 +286,9 @@ class ModelUse():
                 
 
                 return pred_dict
+
+        def predict_image_with_vgg(self, image_path , model = None):
+                pass
 
         def cnn_model(self): 
 
@@ -289,7 +300,8 @@ class ModelUse():
                         
                         
                 print(f"Creating new model at {model_filename}...")
-                              
+
+
                 if self.rearange_data:
                         self.arrange_by_tags()
 
@@ -306,8 +318,6 @@ class ModelUse():
                         validation_data=test_generator,
                         verbose=self.verbose
                 )
-
-                
 
                 
                 try:
@@ -350,68 +360,38 @@ class ModelUse():
                 plt.title('Training and validation loss')
 
         def vgg16_transfer_learning_model(self):
-                
-                
-                # check if there is a saved model
-                
-                vgg_model_name = ".".join([self.model_name , "vgg16" , "h5"])
+                # load model
+                model = VGG16(include_top=False, input_shape=(224, 224, 3))
+                # mark loaded layers as not trainable
 
-                if os.path.exists(os.path.join(os.getcwd() , vgg_model_name)):
-                        self.vgg_tl_model = load_model(os.path.join(os.getcwd() , vgg_model_name))
-                        return self.vgg_tl_model
-
-
-                # Load the VGG16 model weights
-                vgg16 = VGG16(include_top=False, weights='imagenet')
-
-                # Create a new model with the layers from VGG16 up to the last convolutional layer
-                vgg16_model = Model(inputs=vgg16.input, outputs=vgg16.get_layer('block5_conv3').output)
-
-                # Freeze the weights of the layers in the VGG16 model
-                for layer in vgg16_model.layers:
+                for layer in model.layers:
                         layer.trainable = False
 
-                # Add new layers to the model
-                x = vgg16_model.output
-                x = layers.Flatten()(x)
-                x = layers.Dense(1024, activation='relu')(x)
-                predictions = layers.Dense(10, activation='softmax')(x)
 
-                # Create a new model with the layers from VGG16 and the new layers
-                new_tl_model = Model(inputs=vgg16_model.input, outputs=predictions)
+                # add new classifier layers
+                flat1 = layers.Flatten()(model.layers[-1].output)
+                class1 = layers.Dense(128, activation=self.output_activation, kernel_initializer='he_uniform')(flat1)
+                output = layers.Dense(1, activation=self.output_activation)(class1)
+                
+                # define new model
+                model = Model(inputs=model.inputs, outputs=output)
 
-                # Compile the model with a loss function and an optimizer
-                new_tl_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+                # compile model
+                model.compile(optimizer=self.use_optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
+                train_generator , test_generator = self.create_image_gens(datagen_mean=[123.68, 116.779, 103.939])
 
-                train_generator , test_generator = self.create_image_gens()
-                # Train the model on your dataset
-                new_tl_model.fit(train_generator , epochs=self.epoch_number, batch_size=self.train_batch_size)
+                model.fit_generator(train_generator, steps_per_epoch=len(train_generator), epochs=self.epoch_number, verbose=self.verbose)
 
-                return new_tl_model
-
-weater_model = ModelUse(
-        data_src_dir=os.path.join(os.getcwd() , "hw\data_mining_project\image_iden\weather"),
-        filtered_dir=os.path.join(os.getcwd() , "hw\data_mining_project\image_iden\weather_filtered"),
-        prediction_keys = ["rain" , "cloudy" , "shine" , "sunrise"],
-        # existing_model_path="my_model.h5",
-        model_name="weather_model",
-        train_split_size=150,
-        )
+                self.vgg_tl_model = model
 
 
-## Predictions
+                return model
 
-dall_e_images_folder = os.path.join(os.getcwd() , "hw\data_mining_project\image_iden\dall-e_images")
 
-for img in os.listdir(dall_e_images_folder):
-        print("*"*80)
-        img_path = os.path.join(dall_e_images_folder , img)
-        print(img)
-        results = weater_model.predict_image_with_cnn(img_path=img_path)
-        print(results)
-        # print(predict_image_with_vgg16(vgg16_model, img_path, vgg16.preprocess_input, vgg16.decode_predictions))
-        print("*"*80)
+
+
+
 
 
 
