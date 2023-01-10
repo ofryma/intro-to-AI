@@ -192,9 +192,10 @@ y_validation = convert_from_str_to_int(y_validation , {"NonCancer" : 0 , "Cancer
 
 
 
+
+
+
 # converting the dataframes into list of all the rows in the dataframe
-
-
 normalizer = StandardScaler()
 
 X_train_norm = normalizer.fit_transform(X_train)
