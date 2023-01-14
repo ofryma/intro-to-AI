@@ -2,7 +2,7 @@ from sklearn import datasets
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import recall_score , f1_score
-
+from keras.callbacks import EarlyStopping
 
 import warnings
 warnings.filterwarnings('ignore')  # "error", "ignore", "always", "default", "module" or "once"
